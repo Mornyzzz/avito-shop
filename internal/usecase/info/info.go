@@ -6,7 +6,7 @@ import (
 	"context"
 )
 
-type InfoUseCase struct {
+type UseCase struct {
 	repoBalance     BalanceRepo
 	repoInventory   InventoryRepo
 	repoTransaction TransactionRepo
@@ -16,8 +16,8 @@ func New(
 	repoBalance *repository.BalanceRepo,
 	repoInventory *repository.InventoryRepo,
 	repoTransaction *repository.TransactionRepo,
-) *InfoUseCase {
-	return &InfoUseCase{
+) *UseCase {
+	return &UseCase{
 		repoBalance:     repoBalance,
 		repoInventory:   repoInventory,
 		repoTransaction: repoTransaction,
@@ -26,7 +26,7 @@ func New(
 
 type (
 	Info interface {
-		GetInfo(ctx context.Context, username string) (entity.InfoResponse, error)
+		GetInfo(ctx context.Context, username string) (*entity.InfoResponse, error)
 	}
 
 	BalanceRepo interface {
@@ -44,7 +44,7 @@ type (
 	}
 )
 
-func (uc *InfoUseCase) GetInfo(ctx context.Context, username string) (*entity.InfoResponse, error) {
+func (uc *UseCase) GetInfo(ctx context.Context, username string) (*entity.InfoResponse, error) {
 	const op = "usecase.info.GetInfo"
 
 	balance, err := uc.repoBalance.GetUserBalance(ctx, username)

@@ -1,15 +1,15 @@
-package response
+package v1
 
 import (
 	"fmt"
-	"strings"
-
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"strings"
 )
 
 type Response struct {
 	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
+	Error  string `json:"error" example:"message"`
 }
 
 const (
@@ -23,11 +23,11 @@ func OK() Response {
 	}
 }
 
-func Error(msg string) Response {
-	return Response{
+func errorResponse(c *gin.Context, code int, msg string) {
+	c.AbortWithStatusJSON(code, Response{
 		Status: StatusError,
 		Error:  msg,
-	}
+	})
 }
 
 func ValidationError(errs validator.ValidationErrors) Response {

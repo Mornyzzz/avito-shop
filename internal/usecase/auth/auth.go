@@ -4,6 +4,7 @@ import (
 	"avito-shop/internal/entity"
 	e "avito-shop/internal/errors"
 	"avito-shop/internal/repository"
+	"avito-shop/pkg/hash"
 	"avito-shop/pkg/jwt"
 	"context"
 	"errors"
@@ -14,13 +15,13 @@ const (
 	newUserBalance = 1000
 )
 
-type AuthUseCase struct {
+type UseCase struct {
 	repoUser    UserRepo
 	repoBalance BalanceRepo
 }
 
-func New(ru *repository.UserRepo, rb *repository.BalanceRepo) *AuthUseCase {
-	return &AuthUseCase{
+func New(ru *repository.UserRepo, rb *repository.BalanceRepo) *UseCase {
+	return &UseCase{
 		repoUser:    ru,
 		repoBalance: rb,
 	}
@@ -30,7 +31,8 @@ func New(ru *repository.UserRepo, rb *repository.BalanceRepo) *AuthUseCase {
 
 type (
 	Auth interface {
-		Authenticate(context.Context, entity.User) (string, error)
+		Login(context.Context, entity.User) (string, error)
+		Register(context.Context, entity.User) (string, error)
 	}
 
 	UserRepo interface {
@@ -43,42 +45,52 @@ type (
 	}
 )
 
-func (uc *AuthUseCase) Authenticate(ctx context.Context, in entity.User) (string, error) {
-	const op = "usecase.Authenticate"
+func (uc *UseCase) Login(ctx context.Context, in entity.User) (string, error) {
+	const op = "usecase.auth.Login"
 
-	var token string
-
-	user, err := uc.repoUser.Get(ctx, in.Username)
+	hashPassword, err := hash.Password(in.Password)
 	if err != nil {
-		if errors.Is(err, e.ErrUserNotFound) {
-			token, err = jwt.GenerateToken(in.Username, in.Password)
-			if err != nil {
-				return "", fmt.Errorf("%s:%w", op, err)
-			}
-			if err = uc.repoUser.Add(ctx, in); err != nil {
-				return "", fmt.Errorf("%s:%w", op, err)
-			}
-			if err = uc.repoBalance.InitBalance(ctx, in.Username, newUserBalance); err != nil {
-				return "", fmt.Errorf("%s:%w", op, err)
-			}
-			return token, nil
-		}
 		return "", fmt.Errorf("%s:%w", op, err)
 	}
 
-	if in.Password != user.Password {
-		return "", fmt.Errorf("%s:%w", op, e.ErrInvalidPassword)
+	in.Password = hashPassword
+
+	user, err := uc.repoUser.Get(ctx, in.Username)
+
+	if errors.Is(err, e.ErrUserNotFound) {
+		return uc.Register(ctx, in)
 	}
 
-	valid, err := jwt.ValidateToken(in.Username, in.Password, in.Token)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s:%w", op, err)
 	}
 
-	if !valid {
-		return "", fmt.Errorf("%s:%w", op, e.ErrInvalidCredentials)
+	if user.Password != in.Password {
+		return "", fmt.Errorf("%s:%w", op, err)
 	}
 
-	return in.Token, nil
+	token, err := jwt.GenerateToken(in.Username)
+	if err != nil {
+		return "", fmt.Errorf("%s:%w", op, err)
+	}
 
+	return token, nil
+}
+
+func (uc *UseCase) Register(ctx context.Context, in entity.User) (string, error) {
+	const op = "usecase.auth.Register"
+
+	if err := uc.repoUser.Add(ctx, in); err != nil {
+		return "", fmt.Errorf("%s:%w", op, err)
+	}
+	if err := uc.repoBalance.InitBalance(ctx, in.Username, newUserBalance); err != nil {
+		return "", fmt.Errorf("%s:%w", op, err)
+	}
+
+	token, err := jwt.GenerateToken(in.Username)
+	if err != nil {
+		return "", fmt.Errorf("%s:%w", op, err)
+	}
+
+	return token, nil
 }

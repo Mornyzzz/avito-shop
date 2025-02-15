@@ -1,28 +1,21 @@
 package middleware
 
 import (
-	"avito-shop/internal/utils"
-	"github.com/dgrijalva/jwt-go"
+	"avito-shop/pkg/jwt"
+	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
-		if tokenString == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return utils.JWTSecret, nil
+func Auth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Next()
 		})
 
-		if err != nil || !token.Valid {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
+		jwt.AuthMiddleware(next).ServeHTTP(c.Writer, c.Request)
 
-		next.ServeHTTP(w, r)
-	})
+		if c.Writer.Written() {
+			c.Abort()
+		}
+	}
 }

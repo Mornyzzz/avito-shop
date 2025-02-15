@@ -7,13 +7,13 @@ import (
 	"fmt"
 )
 
-type SendUseCase struct {
+type UseCase struct {
 	repoBalance     BalanceRepo
 	repoTransaction TransactionRepo
 }
 
-func New(rb *repository.BalanceRepo, rt *repository.TransactionRepo) *SendUseCase {
-	return &SendUseCase{
+func New(rb *repository.BalanceRepo, rt *repository.TransactionRepo) *UseCase {
+	return &UseCase{
 		repoBalance:     rb,
 		repoTransaction: rt,
 	}
@@ -37,7 +37,7 @@ type (
 	}
 )
 
-func (uc *SendUseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount int) error {
+func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount int) error {
 	const op = "usecase.SendCoin"
 
 	if amount <= 0 {

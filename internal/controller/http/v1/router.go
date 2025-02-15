@@ -2,6 +2,7 @@
 package v1
 
 import (
+	h "avito-shop/internal/controller/http/v1/handlers"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -13,7 +14,6 @@ import (
 	"avito-shop/internal/usecase/buy"
 	"avito-shop/internal/usecase/info"
 	"avito-shop/internal/usecase/send"
-	"avito-shop/pkg/logger"
 	// Swagger docs.
 	_ "github.com/evrone/go-clean-template/docs"
 )
@@ -48,11 +48,11 @@ func NewRouter(handler *gin.Engine,
 	handler.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Routers
-	v1 := handler.Group("/v1")
+	v1 := handler.Group("/api")
 	{
-		newSendRoutes(v1, sendUC, log)
-		newAuthRoutes(v1, authUC, log)
-		newInfoRoutes(v1, infoUC, log)
-		newBuyRoutes(v1, buyUC, log)
+		h.NewAuthRoute(v1, authUC, log)
+		h.NewBuyRoute(v1, buyUC, log)
+		h.NewInfoRoute(v1, infoUC, log)
+		h.NewSendRoute(v1, sendUC, log)
 	}
 }

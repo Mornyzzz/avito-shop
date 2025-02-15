@@ -7,13 +7,13 @@ import (
 	"fmt"
 )
 
-type BuyUseCase struct {
+type UseCase struct {
 	repoBalance   BalanceRepo
 	repoInventory InventoryRepo
 }
 
-func New(rB *repository.BalanceRepo, rI *repository.InventoryRepo) *BuyUseCase {
-	return &BuyUseCase{
+func New(rB *repository.BalanceRepo, rI *repository.InventoryRepo) *UseCase {
+	return &UseCase{
 		repoBalance:   rB,
 		repoInventory: rI,
 	}
@@ -23,7 +23,7 @@ func New(rB *repository.BalanceRepo, rI *repository.InventoryRepo) *BuyUseCase {
 
 type (
 	Buy interface {
-		BuyItem(context.Context, string) error
+		BuyItem(ctx context.Context, username, item string) error
 	}
 
 	BalanceRepo interface {
@@ -39,7 +39,7 @@ type (
 	}
 )
 
-func (uc *BuyUseCase) BuyItem(ctx context.Context, username, item string) error {
+func (uc *UseCase) BuyItem(ctx context.Context, username, item string) error {
 	const op = "usecase.BuyItem"
 
 	price, err := uc.repoInventory.GetItemPrice(ctx, item)
