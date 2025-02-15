@@ -1,0 +1,12 @@
+env: "local"
+
+app:
+  name: 'avito-shop'
+  version: '1.0.0'
+
+http:
+  port: '8080'
+
+postgres:
+  url: "postgres://user:pass@localhost:5432/postgres"
+  pool_max: 2
