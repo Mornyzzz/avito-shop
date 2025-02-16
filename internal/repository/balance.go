@@ -1,6 +1,7 @@
 package repository
 
 import (
+	e "avito-shop/internal/errors"
 	"avito-shop/pkg/postgres"
 	"context"
 	"fmt"
@@ -47,8 +48,8 @@ func (r *BalanceRepo) GetUserBalance(ctx context.Context, username string) (int,
 	const op = "repository.balance.GetUserBalance"
 
 	var balance int
-	query, _, err := sq.Select("coins").
-		From("balances").
+	query, args, err := sq.Select("coins").
+		From("balance").
 		Where(sq.Eq{"username": username}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
@@ -57,15 +58,23 @@ func (r *BalanceRepo) GetUserBalance(ctx context.Context, username string) (int,
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, err := r.Pool.Query(ctx, query)
+	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("%s:%w", op, err)
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return 0, fmt.Errorf("%s: %w", op, e.ErrNotFound)
+	}
+
 	err = rows.Scan(&balance)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	if rows.Next() {
+		return 0, fmt.Errorf("%s: multiple rows returned for username: %s", op, username)
 	}
 
 	return balance, nil
@@ -74,7 +83,7 @@ func (r *BalanceRepo) GetUserBalance(ctx context.Context, username string) (int,
 func (r *BalanceRepo) DecreaseBalance(ctx context.Context, username string, amount int) error {
 	const op = "repository.balance.DecreaseBalance"
 
-	query, args, err := sq.Update("balances").
+	query, args, err := sq.Update("balance").
 		Set("coins", sq.Expr("coins - ?", amount)).
 		Where(sq.Eq{"username": username}).
 		PlaceholderFormat(sq.Dollar).
@@ -95,7 +104,7 @@ func (r *BalanceRepo) DecreaseBalance(ctx context.Context, username string, amou
 func (r *BalanceRepo) IncreaseBalance(ctx context.Context, username string, amount int) error {
 	const op = "repository.balance.IncreaseBalance"
 
-	query, args, err := sq.Update("balances").
+	query, args, err := sq.Update("balance").
 		Set("coins", sq.Expr("coins + ?", amount)).
 		Where(sq.Eq{"username": username}).
 		PlaceholderFormat(sq.Dollar).

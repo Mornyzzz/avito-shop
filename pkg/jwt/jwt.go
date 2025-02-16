@@ -1,8 +1,9 @@
 package jwt
 
 import (
-	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -41,33 +42,41 @@ func GenerateToken(username string) (string, error) {
 	return tokenString, nil
 }
 
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
+func Auth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Получение заголовка Authorization
+		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Missing authorization header", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
 			return
 		}
 
+		// Извлечение токена из заголовка
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
-			http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
 			return
 		}
 
+		// Парсинг и проверка токена
 		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
 		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			log.Printf("Invalid token: %v", err) // Логирование ошибки
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
 
+		// Извлечение claims и добавление в контекст Gin
 		if claims, ok := token.Claims.(*Claims); ok {
-			ctx := context.WithValue(r.Context(), "username", claims.Username)
-			r = r.WithContext(ctx)
+			c.Set("username", claims.Username)
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
 		}
 
-		next.ServeHTTP(w, r)
-	})
+		// Передача управления следующему обработчику
+		c.Next()
+	}
 }

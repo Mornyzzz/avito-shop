@@ -28,7 +28,7 @@ type User interface {
 func (r *UserRepo) Get(ctx context.Context, username string) (*entity.User, error) {
 	const op = "repository.user.Get"
 
-	query, args, err := sq.Select("name", "password").
+	query, args, err := sq.Select("username", "password").
 		From("users").
 		Where(sq.Eq{"username": username}).
 		PlaceholderFormat(sq.Dollar).
@@ -46,6 +46,10 @@ func (r *UserRepo) Get(ctx context.Context, username string) (*entity.User, erro
 
 	var user entity.User
 
+	if !rows.Next() {
+		return nil, fmt.Errorf("%s: %w", op, e.ErrNotFound)
+	}
+
 	err = rows.Scan(&user.Username, &user.Password)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -54,7 +58,11 @@ func (r *UserRepo) Get(ctx context.Context, username string) (*entity.User, erro
 		return nil, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
 
-	return &entity.User{}, nil
+	if rows.Next() {
+		return nil, fmt.Errorf("%s: multiple rows returned for username: %s", op, username)
+	}
+
+	return &user, nil
 }
 
 func (r *UserRepo) Add(ctx context.Context, user entity.User) error {

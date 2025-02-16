@@ -41,7 +41,7 @@ func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount
 	const op = "usecase.SendCoin"
 
 	if amount <= 0 {
-		return fmt.Errorf("%s: %w", op, "amount must be greater than zero")
+		return fmt.Errorf("%s: %s", op, "amount must be greater than zero")
 	}
 
 	balance, err := uc.repoBalance.GetUserBalance(ctx, fromUser)
@@ -50,14 +50,14 @@ func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount
 	}
 
 	if balance < amount {
-		return fmt.Errorf("%s: %w", op, "insufficient funds")
+		return fmt.Errorf("%s: %s", op, "insufficient funds")
 	}
 
 	if err = uc.repoBalance.DecreaseBalance(ctx, fromUser, amount); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err = uc.repoBalance.IncreaseBalance(ctx, fromUser, amount); err != nil {
+	if err = uc.repoBalance.IncreaseBalance(ctx, toUser, amount); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

@@ -1,4 +1,4 @@
--- migrations/001_init_tables.sql
+-- migrations/001_init_tables.up.sql
 
 -- создание таблиц
 
@@ -26,7 +26,7 @@ CREATE TABLE CoinTransaction (
     Amount INT NOT NULL
 );
 
-CREATE TABLE "User" (
+CREATE TABLE Users (
     Username VARCHAR(255) PRIMARY KEY,
     Password VARCHAR(255) NOT NULL
 );

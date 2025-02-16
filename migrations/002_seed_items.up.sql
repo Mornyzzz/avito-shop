@@ -1,4 +1,4 @@
--- migrations/002_seed_items.sql
+-- migrations/002_seed_items.up.sql
 
 -- заполнение таблицы Item данными
 INSERT INTO Item (Name, Price) VALUES

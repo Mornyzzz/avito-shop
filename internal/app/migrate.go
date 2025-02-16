@@ -46,19 +46,19 @@ func init() {
 	}
 
 	if err != nil {
-		log.Fatalf("%w: %s", op, err)
+		log.Fatalf("%s: %w", op, err)
 	}
 
 	err = m.Up()
 	defer m.Close()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("%w: %s", op, err)
+		log.Fatalf("%s: %w", op, err)
 	}
 
 	if errors.Is(err, migrate.ErrNoChange) {
-		log.Printf(op, "no change")
+		log.Printf("%s: %s", op, "no change")
 		return
 	}
 
-	log.Printf(op, "up success")
+	log.Printf("%s: %s", op, "up success")
 }

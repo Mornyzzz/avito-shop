@@ -25,7 +25,7 @@ func NewTransactionRepo(pg *postgres.Postgres) *TransactionRepo {
 func (r *TransactionRepo) AddTransaction(ctx context.Context, txn entity.CoinTransaction) error {
 	const op = "repository.transaction.AddTransaction"
 
-	query, args, err := sq.Insert("transactions").
+	query, args, err := sq.Insert("coinTransaction").
 		Columns("fromUser", "toUser", "amount").
 		Values(txn.FromUser, txn.ToUser, txn.Amount).
 		PlaceholderFormat(sq.Dollar).
@@ -44,7 +44,7 @@ func (r *TransactionRepo) GetReceivedTransactions(ctx context.Context, username 
 	const op = "repository.transaction.GetReceivedTransactions"
 
 	query, args, err := sq.Select("fromUser", "amount").
-		From("transactions").
+		From("coinTransaction").
 		Where(sq.Eq{"toUser": username}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
@@ -78,7 +78,7 @@ func (r *TransactionRepo) GetSentTransactions(ctx context.Context, username stri
 	const op = "repository.transaction.GetSentTransactions"
 
 	query, args, err := sq.Select("toUser", "amount").
-		From("transactions").
+		From("Cointransaction").
 		Where(sq.Eq{"fromUser": username}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()

@@ -2,12 +2,11 @@ package repository
 
 import (
 	"avito-shop/internal/entity"
+	e "avito-shop/internal/errors"
 	"avito-shop/pkg/postgres"
 	"context"
-	"errors"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v4"
 )
 
 type InventoryRepo struct {
@@ -31,7 +30,7 @@ func (r *InventoryRepo) GetItemPrice(ctx context.Context, name string) (int, err
 
 	var price int
 	query, args, err := sq.Select("price").
-		From("inventory").
+		From("item").
 		Where(sq.Eq{"name": name}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
@@ -46,20 +45,25 @@ func (r *InventoryRepo) GetItemPrice(ctx context.Context, name string) (int, err
 	}
 	defer rows.Close()
 
+	if !rows.Next() {
+		return 0, fmt.Errorf("%s: %w", op, e.ErrNotFound)
+	}
+
 	err = rows.Scan(&price)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
+	if rows.Next() {
+		return 0, fmt.Errorf("%s: multiple rows returned for item: %s", op, name)
+	}
 	return price, nil
 }
 
-func (r *InventoryRepo) ExistsInventoryItem(ctx context.Context, username string, item string) (bool, error) {
-	const op = "repository.inventory.GetInventoryItem"
+func (r *InventoryRepo) ExistsInventoryItem(ctx context.Context, username, item string) (bool, error) {
+	const op = "repository.inventory.ExistsInventoryItem"
 
-	query, args, err := sq.Select("1").
-		From("inventory").
-		Where(sq.Eq{"username": username, "item_name": item}).
+	query, _, err := sq.Select("EXISTS(SELECT 1 FROM inventory WHERE username = $1 AND item = $2)").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
 
@@ -68,11 +72,8 @@ func (r *InventoryRepo) ExistsInventoryItem(ctx context.Context, username string
 	}
 
 	var exists bool
-	err = r.Pool.QueryRow(ctx, query, args...).Scan(&exists)
+	err = r.Pool.QueryRow(ctx, query, username, item).Scan(&exists)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
 		return false, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
 
@@ -84,7 +85,7 @@ func (r *InventoryRepo) IncrementInventoryItemQuantity(ctx context.Context, user
 
 	query, args, err := sq.Update("inventory").
 		Set("quantity", sq.Expr("quantity + 1")).
-		Where(sq.Eq{"username": username, "item_name": item}).
+		Where(sq.Eq{"username": username, "item": item}).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
 
@@ -101,10 +102,10 @@ func (r *InventoryRepo) IncrementInventoryItemQuantity(ctx context.Context, user
 }
 
 func (r *InventoryRepo) AddInventory(ctx context.Context, inventory entity.Inventory) error {
-	const op = "repository.inventory.AddInventoryItem"
+	const op = "repository.inventory.AddInventory"
 
 	query, args, err := sq.Insert("inventory").
-		Columns("username", "item_name", "quantity").
+		Columns("username", "item", "quantity").
 		Values(inventory.Username, inventory.Item, inventory.Quantity).
 		PlaceholderFormat(sq.Dollar).
 		ToSql()
@@ -124,7 +125,7 @@ func (r *InventoryRepo) AddInventory(ctx context.Context, inventory entity.Inven
 func (r *InventoryRepo) GetInventory(ctx context.Context, username string) ([]entity.InventoryItem, error) {
 	const op = "repository.inventory.getInventory"
 
-	query, args, err := sq.Select("name, quantity").
+	query, args, err := sq.Select("item, quantity").
 		From("inventory").
 		Where(sq.Eq{"username": username}).
 		PlaceholderFormat(sq.Dollar).

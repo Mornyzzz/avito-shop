@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	mw "avito-shop/internal/controller/middleware"
 	"avito-shop/internal/usecase/send"
+	mw "avito-shop/pkg/jwt"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/slog"
 	"net/http"

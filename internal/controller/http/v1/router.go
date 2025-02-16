@@ -3,17 +3,12 @@ package v1
 
 import (
 	h "avito-shop/internal/controller/http/v1/handlers"
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"golang.org/x/exp/slog"
-	"net/http"
-
 	"avito-shop/internal/usecase/auth"
 	"avito-shop/internal/usecase/buy"
 	"avito-shop/internal/usecase/info"
 	"avito-shop/internal/usecase/send"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
 	// Swagger docs.
 	_ "github.com/evrone/go-clean-template/docs"
 )
@@ -38,14 +33,14 @@ func NewRouter(handler *gin.Engine,
 	handler.Use(gin.Recovery())
 
 	// Swagger
-	swaggerHandler := ginSwagger.DisablingWrapHandler(swaggerFiles.Handler, "DISABLE_SWAGGER_HTTP_HANDLER")
-	handler.GET("/swagger/*any", swaggerHandler)
+	//swaggerHandler := ginSwagger.DisablingWrapHandler(swaggerFiles.Handler, "DISABLE_SWAGGER_HTTP_HANDLER")
+	//handler.GET("/swagger/*any", swaggerHandler)
 
-	// K8s probe
-	handler.GET("/healthz", func(c *gin.Context) { c.Status(http.StatusOK) })
+	//K8s probe
+	//handler.GET("/healthz", func(c *gin.Context) { c.Status(http.StatusOK) })
 
 	// Prometheus metrics
-	handler.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	//handler.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Routers
 	v1 := handler.Group("/api")

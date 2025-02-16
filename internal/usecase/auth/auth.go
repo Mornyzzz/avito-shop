@@ -4,7 +4,6 @@ import (
 	"avito-shop/internal/entity"
 	e "avito-shop/internal/errors"
 	"avito-shop/internal/repository"
-	"avito-shop/pkg/hash"
 	"avito-shop/pkg/jwt"
 	"context"
 	"errors"
@@ -48,30 +47,56 @@ type (
 func (uc *UseCase) Login(ctx context.Context, in entity.User) (string, error) {
 	const op = "usecase.auth.Login"
 
-	hashPassword, err := hash.Password(in.Password)
+	// Начинаем транзакцию
+	tx, err := uc.repoUser.BeginTx(ctx, nil)
 	if err != nil {
-		return "", fmt.Errorf("%s:%w", op, err)
+		return "", fmt.Errorf("%s: failed to begin transaction: %w", op, err)
 	}
 
-	in.Password = hashPassword
+	// Откат транзакции в случае ошибки
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				log.Printf("%s: failed to rollback transaction: %v", op, rollbackErr)
+			}
+		}
+	}()
 
+	// Получаем пользователя в рамках транзакции
 	user, err := uc.repoUser.Get(ctx, in.Username)
+	if errors.Is(err, e.ErrNotFound) {
+		// Если пользователь не найден, регистрируем его в рамках той же транзакции
+		token, err := uc.Register(ctx, in)
+		if err != nil {
+			return "", fmt.Errorf("%s: failed to register user: %w", op, err)
+		}
 
-	if errors.Is(err, e.ErrUserNotFound) {
-		return uc.Register(ctx, in)
+		// Фиксируем транзакцию, если регистрация прошла успешно
+		if commitErr := tx.Commit(); commitErr != nil {
+			return "", fmt.Errorf("%s: failed to commit transaction: %w", op, commitErr)
+		}
+
+		return token, nil
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("%s:%w", op, err)
+		return "", fmt.Errorf("%s: failed to get user: %w", op, err)
 	}
 
+	// Проверяем пароль
 	if user.Password != in.Password {
-		return "", fmt.Errorf("%s:%w", op, err)
+		return "", fmt.Errorf("%s: %w", op, e.ErrInvalidPassword)
 	}
 
+	// Генерируем токен
 	token, err := jwt.GenerateToken(in.Username)
 	if err != nil {
-		return "", fmt.Errorf("%s:%w", op, err)
+		return "", fmt.Errorf("%s: failed to generate token: %w", op, err)
+	}
+
+	// Фиксируем транзакцию, если все прошло успешно
+	if commitErr := tx.Commit(); commitErr != nil {
+		return "", fmt.Errorf("%s: failed to commit transaction: %w", op, commitErr)
 	}
 
 	return token, nil

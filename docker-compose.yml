@@ -24,14 +24,14 @@ services:
     depends_on:
       - postgres
 
-  integration:
-    build:
-      context: .
-      dockerfile: integration-test/Dockerfile
-    container_name: integration
-    image: integration
-    depends_on:
-      - app
+#  integration:
+#    build:
+#      context: .
+#      dockerfile: integration-test/Dockerfile
+#    container_name: integration
+#    image: integration
+#    depends_on:
+#      - app
 
 volumes:
   pg-data:

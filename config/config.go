@@ -14,18 +14,15 @@ type (
 		PG   `yaml:"postgres"`
 	}
 
-	// App -.
 	App struct {
 		Name    string `env-required:"true" yaml:"name"    env:"APP_NAME"`
 		Version string `env-required:"true" yaml:"version" env:"APP_VERSION"`
 	}
 
-	// HTTP -.
 	HTTP struct {
 		Port string `env-required:"true" yaml:"port" env:"HTTP_PORT"`
 	}
 
-	// PG -.
 	PG struct {
 		PoolMax int    `env-required:"true" yaml:"pool_max" env:"PG_POOL_MAX"`
 		URL     string `env-required:"true" yaml:"url"      env:"PG_URL"`
