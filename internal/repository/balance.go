@@ -1,11 +1,12 @@
 package repository
 
 import (
-	e "avito-shop/internal/errors"
+	e "avito-shop/pkg/errors"
 	"avito-shop/pkg/postgres"
 	"context"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
 )
 
 type BalanceRepo struct {
@@ -16,8 +17,10 @@ func NewBalanceRepo(pg *postgres.Postgres) *BalanceRepo {
 	return &BalanceRepo{pg}
 }
 
+//go:generate mockery --name=Balance
+
 type Balance interface {
-	InitBalance(ctx context.Context, username string) error
+	InitBalance(ctx context.Context, username string, amount int) error
 	GetUserBalance(ctx context.Context, username string) (int, error)
 	DecreaseBalance(ctx context.Context, username string, amount int) error
 	IncreaseBalance(ctx context.Context, username string, amount int) error
@@ -35,8 +38,8 @@ func (r *BalanceRepo) InitBalance(ctx context.Context, username string, amount i
 	if err != nil {
 		return fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-
-	_, err = r.Pool.Exec(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -58,7 +61,8 @@ func (r *BalanceRepo) GetUserBalance(ctx context.Context, username string) (int,
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, err := r.Pool.Query(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("%s:%w", op, err)
 	}
@@ -74,7 +78,7 @@ func (r *BalanceRepo) GetUserBalance(ctx context.Context, username string) (int,
 	}
 
 	if rows.Next() {
-		return 0, fmt.Errorf("%s: multiple rows returned for username: %s", op, username)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return balance, nil
@@ -93,7 +97,8 @@ func (r *BalanceRepo) DecreaseBalance(ctx context.Context, username string, amou
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	_, err = r.Pool.Exec(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -114,7 +119,8 @@ func (r *BalanceRepo) IncreaseBalance(ctx context.Context, username string, amou
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	_, err = r.Pool.Exec(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

@@ -2,11 +2,11 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type (
-	// Config -.
 	Config struct {
 		Env  string `yaml:"env"`
 		App  `yaml:"app"`
@@ -29,7 +29,6 @@ type (
 	}
 )
 
-// NewConfig returns app config.
 func NewConfig() (*Config, error) {
 	const op = "config.NewConfig"
 	cfg := &Config{}

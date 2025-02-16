@@ -3,23 +3,27 @@ package send
 import (
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
+	"avito-shop/pkg/errors"
 	"context"
 	"fmt"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
 	repoBalance     BalanceRepo
 	repoTransaction TransactionRepo
+	trManager       *manager.Manager
 }
 
-func New(rb *repository.BalanceRepo, rt *repository.TransactionRepo) *UseCase {
+func New(rb *repository.BalanceRepo, rt *repository.TransactionRepo, trManager *manager.Manager) *UseCase {
 	return &UseCase{
 		repoBalance:     rb,
 		repoTransaction: rt,
+		trManager:       trManager,
 	}
 }
 
-//go:generate mockgen -source=auth.go -destination=./mocks_test.go -package=usecase_test
+//go:generate mockery --name=Send
 
 type (
 	Send interface {
@@ -41,35 +45,45 @@ func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount
 	const op = "usecase.SendCoin"
 
 	if amount <= 0 {
-		return fmt.Errorf("%s: %s", op, "amount must be greater than zero")
+		return fmt.Errorf("%s: %s", op, errors.ErrInvalidCredentials)
 	}
 
-	balance, err := uc.repoBalance.GetUserBalance(ctx, fromUser)
+	err := uc.trManager.Do(ctx, func(ctx context.Context) error {
+		balance, err := uc.repoBalance.GetUserBalance(ctx, fromUser)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		_, err = uc.repoBalance.GetUserBalance(ctx, toUser)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		if balance < amount {
+			return fmt.Errorf("%s: %w", op, errors.ErrInvalidCredentials)
+		}
+
+		if err = uc.repoBalance.DecreaseBalance(ctx, fromUser, amount); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		if err = uc.repoBalance.IncreaseBalance(ctx, toUser, amount); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		txn := entity.CoinTransaction{
+			FromUser: fromUser,
+			ToUser:   toUser,
+			Amount:   amount,
+		}
+
+		if err = uc.repoTransaction.AddTransaction(ctx, txn); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-
-	if balance < amount {
-		return fmt.Errorf("%s: %s", op, "insufficient funds")
-	}
-
-	if err = uc.repoBalance.DecreaseBalance(ctx, fromUser, amount); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	if err = uc.repoBalance.IncreaseBalance(ctx, toUser, amount); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	txn := entity.CoinTransaction{
-		FromUser: fromUser,
-		ToUser:   toUser,
-		Amount:   amount,
-	}
-
-	if err = uc.repoTransaction.AddTransaction(ctx, txn); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
 	return nil
 }

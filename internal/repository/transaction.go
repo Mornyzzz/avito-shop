@@ -6,11 +6,14 @@ import (
 	"context"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
 )
 
 type TransactionRepo struct {
 	*postgres.Postgres
 }
+
+//go:generate mockery --name=Transaction
 
 type Transaction interface {
 	AddTransaction(ctx context.Context, txn entity.CoinTransaction) error
@@ -33,7 +36,9 @@ func (r *TransactionRepo) AddTransaction(ctx context.Context, txn entity.CoinTra
 	if err != nil {
 		return fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-	_, err = r.Pool.Exec(ctx, query, args...)
+
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -51,7 +56,9 @@ func (r *TransactionRepo) GetReceivedTransactions(ctx context.Context, username 
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-	rows, err := r.Pool.Query(ctx, query, args...)
+
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -85,7 +92,9 @@ func (r *TransactionRepo) GetSentTransactions(ctx context.Context, username stri
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-	rows, err := r.Pool.Query(ctx, query, args...)
+
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}

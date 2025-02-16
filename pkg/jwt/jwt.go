@@ -9,12 +9,10 @@ import (
 	"time"
 )
 
-// Секретный ключ для подписи токена
 var (
 	jwtKey = []byte("my-avito-secret-key")
 )
 
-// Claims — структура для хранения данных в JWT
 type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
@@ -26,10 +24,10 @@ func GenerateToken(username string) (string, error) {
 	claims := &Claims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime), // Срок действия
-			IssuedAt:  jwt.NewNumericDate(time.Now()),     // Время выпуска
-			NotBefore: jwt.NewNumericDate(time.Now()),     // Время начала действия
-			Issuer:    "your-app-name",                    // Идентификатор приложения
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "avito-shop",
 		},
 	}
 
@@ -42,41 +40,36 @@ func GenerateToken(username string) (string, error) {
 	return tokenString, nil
 }
 
-func Auth() gin.HandlerFunc {
+func AuthMW() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Получение заголовка Authorization
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		// Извлечение токена из заголовка
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		// Парсинг и проверка токена
 		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
 		if err != nil || !token.Valid {
-			log.Printf("Invalid token: %v", err) // Логирование ошибки
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			log.Printf("Invalid token: %v", err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		// Извлечение claims и добавление в контекст Gin
 		if claims, ok := token.Claims.(*Claims); ok {
 			c.Set("username", claims.Username)
 		} else {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
 
-		// Передача управления следующему обработчику
 		c.Next()
 	}
 }

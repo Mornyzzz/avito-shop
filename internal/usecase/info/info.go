@@ -4,29 +4,35 @@ import (
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
 	"context"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
 	repoBalance     BalanceRepo
 	repoInventory   InventoryRepo
 	repoTransaction TransactionRepo
+	trManager       *manager.Manager
 }
 
 func New(
 	repoBalance *repository.BalanceRepo,
 	repoInventory *repository.InventoryRepo,
 	repoTransaction *repository.TransactionRepo,
+	trManager *manager.Manager,
 ) *UseCase {
 	return &UseCase{
 		repoBalance:     repoBalance,
 		repoInventory:   repoInventory,
 		repoTransaction: repoTransaction,
+		trManager:       trManager,
 	}
 }
 
+//go:generate mockery --name=Inf
+//go:generate mockery --name=Info
 type (
 	Info interface {
-		GetInfo(ctx context.Context, username string) (*entity.InfoResponse, error)
+		GetInfo(ctx context.Context, username string) (*entity.Info, error)
 	}
 
 	BalanceRepo interface {
@@ -44,30 +50,42 @@ type (
 	}
 )
 
-func (uc *UseCase) GetInfo(ctx context.Context, username string) (*entity.InfoResponse, error) {
+func (uc *UseCase) GetInfo(ctx context.Context, username string) (*entity.Info, error) {
 	const op = "usecase.info.GetInfo"
 
-	balance, err := uc.repoBalance.GetUserBalance(ctx, username)
+	var (
+		balance      int
+		inventory    []entity.InventoryItem
+		sentTxns     []entity.SentTransaction
+		receivedTxns []entity.ReceivedTransaction
+		err          error
+	)
+
+	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
+
+		balance, err = uc.repoBalance.GetUserBalance(ctx, username)
+		if err != nil {
+			return err
+		}
+		inventory, err = uc.repoInventory.GetInventory(ctx, username)
+		if err != nil {
+			return err
+		}
+		sentTxns, err = uc.repoTransaction.GetSentTransactions(ctx, username)
+		if err != nil {
+			return err
+		}
+		receivedTxns, err = uc.repoTransaction.GetReceivedTransactions(ctx, username)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	inventory, err := uc.repoInventory.GetInventory(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-
-	sentTxns, err := uc.repoTransaction.GetSentTransactions(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-
-	receivedTxns, err := uc.repoTransaction.GetReceivedTransactions(ctx, username)
-	if err != nil {
-		return nil, err
-	}
-
-	return &entity.InfoResponse{
+	return &entity.Info{
 		Coins:     balance,
 		Inventory: inventory,
 		CoinHistory: entity.CoinHistory{

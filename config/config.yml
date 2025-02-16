@@ -9,4 +9,4 @@ http:
 
 postgres:
   url: "postgres://user:pass@localhost:5432/postgres"
-  pool_max: 2
+  pool_max: 18

@@ -1,6 +1,5 @@
 package entity
 
-// CoinTransaction представляет одну транзакцию монет
 type CoinTransaction struct {
 	ID       int    `json:"id"`
 	FromUser string `json:"fromUser"`
@@ -18,7 +17,6 @@ type SentTransaction struct {
 	Amount int    `json:"amount"`
 }
 
-// CoinHistory представляет историю транзакций монет
 type CoinHistory struct {
 	Received []ReceivedTransaction `json:"received"`
 	Sent     []SentTransaction     `json:"sent"`

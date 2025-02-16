@@ -2,18 +2,19 @@ package app
 
 import (
 	"avito-shop/config"
-	v1 "avito-shop/internal/controller/http/v1"
-	repo "avito-shop/internal/repository"
-	"avito-shop/internal/usecase/auth"
-	"avito-shop/internal/usecase/buy"
-	"avito-shop/internal/usecase/info"
-	"avito-shop/internal/usecase/send"
+	"avito-shop/internal/controller"
+	"avito-shop/internal/controller/worker"
+	_ "avito-shop/internal/repository"
 	"avito-shop/pkg/httpserver"
 	l "avito-shop/pkg/logger"
 	_ "avito-shop/pkg/logger/handlers/slogpretty"
 	"avito-shop/pkg/logger/sl"
 	"avito-shop/pkg/postgres"
 	"fmt"
+	_ "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
+	_ "github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+	_ "sync"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/slog"
 	"os"
@@ -21,7 +22,11 @@ import (
 	"syscall"
 )
 
-// Run creates objects via constructors.
+const (
+	numWorkers = 18
+	taskNum    = 18
+)
+
 func Run(cfg *config.Config) {
 	const op = "app.Run"
 
@@ -36,44 +41,26 @@ func Run(cfg *config.Config) {
 	log.Debug("debug messages are enabled")
 
 	// Repository
-	pg, err := postgres.New(cfg.PG.URL, postgres.MaxPoolSize(cfg.PG.PoolMax))
+	pg, err := postgres.New(cfg.PG.URL, postgres.MaxPoolSize(cfg.PoolMax))
 	if err != nil {
 		log.Error("failed to init storage", sl.Err(err))
 		os.Exit(-1)
 	}
 	defer pg.Close()
 
-	// Use case
-	authUseCase := auth.New(
-		repo.NewUserRepo(pg),
-		repo.NewBalanceRepo(pg),
-	)
-
-	buyUseCase := buy.New(
-		repo.NewBalanceRepo(pg),
-		repo.NewInventoryRepo(pg),
-	)
-
-	infoUseCase := info.New(
-		repo.NewBalanceRepo(pg),
-		repo.NewInventoryRepo(pg),
-		repo.NewTransactionRepo(pg),
-	)
-
-	sendUseCase := send.New(
-		repo.NewBalanceRepo(pg),
-		repo.NewTransactionRepo(pg),
-	)
+	// Workers
+	workerPool := worker.NewWorkerPool(numWorkers, taskNum)
+	defer workerPool.Shutdown()
 
 	// HTTP Server
 	handler := gin.New()
-	v1.NewRouter(handler,
+	controller.NewRouter(handler,
 		log,
-		authUseCase,
-		buyUseCase,
-		infoUseCase,
-		sendUseCase,
+		pg,
+		workerPool,
 	)
+
+	//run server
 	httpServer := httpserver.New(handler, httpserver.Port(cfg.HTTP.Port))
 
 	// Waiting signal
@@ -88,11 +75,11 @@ func Run(cfg *config.Config) {
 	}
 
 	// Shutdown
+	workerPool.Shutdown()
 	err = httpServer.Shutdown()
 	if err != nil {
 		log.Error("failed to stop server", fmt.Errorf("%s: %w", op, err))
 	}
 
 	log.Info("server stopped")
-
 }

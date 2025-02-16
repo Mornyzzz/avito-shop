@@ -2,12 +2,13 @@ package auth
 
 import (
 	"avito-shop/internal/entity"
-	e "avito-shop/internal/errors"
 	"avito-shop/internal/repository"
+	e "avito-shop/pkg/errors"
 	"avito-shop/pkg/jwt"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 const (
@@ -17,21 +18,22 @@ const (
 type UseCase struct {
 	repoUser    UserRepo
 	repoBalance BalanceRepo
+	trManager   *manager.Manager
 }
 
-func New(ru *repository.UserRepo, rb *repository.BalanceRepo) *UseCase {
+func New(ru *repository.UserRepo, rb *repository.BalanceRepo, trManager *manager.Manager) *UseCase {
 	return &UseCase{
 		repoUser:    ru,
 		repoBalance: rb,
+		trManager:   trManager,
 	}
 }
 
-//go:generate mockgen -source=auth.go -destination=./mocks_test.go -package=usecase_test
+//go:generate mockery --name=Auth
 
 type (
 	Auth interface {
 		Login(context.Context, entity.User) (string, error)
-		Register(context.Context, entity.User) (string, error)
 	}
 
 	UserRepo interface {
@@ -47,62 +49,43 @@ type (
 func (uc *UseCase) Login(ctx context.Context, in entity.User) (string, error) {
 	const op = "usecase.auth.Login"
 
-	// Начинаем транзакцию
-	tx, err := uc.repoUser.BeginTx(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("%s: failed to begin transaction: %w", op, err)
-	}
-
-	// Откат транзакции в случае ошибки
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				log.Printf("%s: failed to rollback transaction: %v", op, rollbackErr)
+	var token string
+	var err error
+	var user *entity.User
+	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
+		user, err = uc.repoUser.Get(ctx, in.Username)
+		if errors.Is(err, e.ErrNotFound) {
+			token, err = uc.register(ctx, in)
+			if err != nil {
+				return fmt.Errorf("%s: failed to register user: %w", op, err)
 			}
+			return nil
+		} else if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
 		}
-	}()
+		return nil
+	})
 
-	// Получаем пользователя в рамках транзакции
-	user, err := uc.repoUser.Get(ctx, in.Username)
-	if errors.Is(err, e.ErrNotFound) {
-		// Если пользователь не найден, регистрируем его в рамках той же транзакции
-		token, err := uc.Register(ctx, in)
-		if err != nil {
-			return "", fmt.Errorf("%s: failed to register user: %w", op, err)
-		}
-
-		// Фиксируем транзакцию, если регистрация прошла успешно
-		if commitErr := tx.Commit(); commitErr != nil {
-			return "", fmt.Errorf("%s: failed to commit transaction: %w", op, commitErr)
-		}
-
+	if err != nil {
+		return "", fmt.Errorf("%s: failed to login: %w", op, err)
+	}
+	if token != "" {
 		return token, nil
 	}
 
-	if err != nil {
-		return "", fmt.Errorf("%s: failed to get user: %w", op, err)
-	}
-
-	// Проверяем пароль
 	if user.Password != in.Password {
-		return "", fmt.Errorf("%s: %w", op, e.ErrInvalidPassword)
+		return "", fmt.Errorf("%s: %w", op, e.ErrInvalidCredentials)
 	}
 
-	// Генерируем токен
-	token, err := jwt.GenerateToken(in.Username)
+	token, err = jwt.GenerateToken(in.Username)
 	if err != nil {
 		return "", fmt.Errorf("%s: failed to generate token: %w", op, err)
-	}
-
-	// Фиксируем транзакцию, если все прошло успешно
-	if commitErr := tx.Commit(); commitErr != nil {
-		return "", fmt.Errorf("%s: failed to commit transaction: %w", op, commitErr)
 	}
 
 	return token, nil
 }
 
-func (uc *UseCase) Register(ctx context.Context, in entity.User) (string, error) {
+func (uc *UseCase) register(ctx context.Context, in entity.User) (string, error) {
 	const op = "usecase.auth.Register"
 
 	if err := uc.repoUser.Add(ctx, in); err != nil {

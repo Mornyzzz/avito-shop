@@ -2,11 +2,12 @@ package repository
 
 import (
 	"avito-shop/internal/entity"
-	e "avito-shop/internal/errors"
+	e "avito-shop/pkg/errors"
 	"avito-shop/pkg/postgres"
 	"context"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
 )
 
 type InventoryRepo struct {
@@ -16,6 +17,8 @@ type InventoryRepo struct {
 func NewInventoryRepo(pg *postgres.Postgres) *InventoryRepo {
 	return &InventoryRepo{pg}
 }
+
+//go:generate mockery --name=Inventory
 
 type Inventory interface {
 	GetItemPrice(ctx context.Context, name string) (int, error)
@@ -39,7 +42,9 @@ func (r *InventoryRepo) GetItemPrice(ctx context.Context, name string) (int, err
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, err := r.Pool.Query(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
+
 	if err != nil {
 		return 0, fmt.Errorf("%s:%w", op, err)
 	}
@@ -55,7 +60,7 @@ func (r *InventoryRepo) GetItemPrice(ctx context.Context, name string) (int, err
 	}
 
 	if rows.Next() {
-		return 0, fmt.Errorf("%s: multiple rows returned for item: %s", op, name)
+		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 	return price, nil
 }
@@ -72,7 +77,8 @@ func (r *InventoryRepo) ExistsInventoryItem(ctx context.Context, username, item 
 	}
 
 	var exists bool
-	err = r.Pool.QueryRow(ctx, query, username, item).Scan(&exists)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	err = conn.QueryRow(ctx, query, username, item).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -92,8 +98,8 @@ func (r *InventoryRepo) IncrementInventoryItemQuantity(ctx context.Context, user
 	if err != nil {
 		return fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-
-	_, err = r.Pool.Exec(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -114,7 +120,8 @@ func (r *InventoryRepo) AddInventory(ctx context.Context, inventory entity.Inven
 		return fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
 
-	_, err = r.Pool.Exec(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
@@ -135,13 +142,18 @@ func (r *InventoryRepo) GetInventory(ctx context.Context, username string) ([]en
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, err := r.Pool.Query(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	defer rows.Close()
 
 	var inventory []entity.InventoryItem
+
+	if !rows.Next() {
+		return nil, fmt.Errorf("%s: %w", op, e.ErrNotFound)
+	}
 
 	for rows.Next() {
 		var item entity.InventoryItem

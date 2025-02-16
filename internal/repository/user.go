@@ -2,13 +2,14 @@ package repository
 
 import (
 	"avito-shop/internal/entity"
-	e "avito-shop/internal/errors"
+	e "avito-shop/pkg/errors"
 	"avito-shop/pkg/postgres"
 	"context"
 	_ "database/sql"
 	"errors"
 	"fmt"
 	sq "github.com/Masterminds/squirrel"
+	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
 	"github.com/jackc/pgx/v4"
 )
 
@@ -19,6 +20,8 @@ type UserRepo struct {
 func NewUserRepo(pg *postgres.Postgres) *UserRepo {
 	return &UserRepo{pg}
 }
+
+//go:generate mockery --name=User
 
 type User interface {
 	Get(ctx context.Context, username string) (*entity.User, error)
@@ -38,7 +41,8 @@ func (r *UserRepo) Get(ctx context.Context, username string) (*entity.User, erro
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	rows, err := r.Pool.Query(ctx, query, args...)
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%w", op, err)
 	}
@@ -76,7 +80,9 @@ func (r *UserRepo) Add(ctx context.Context, user entity.User) error {
 	if err != nil {
 		return fmt.Errorf("%s: failed to build query: %w", op, err)
 	}
-	_, err = r.Pool.Exec(ctx, query, args...)
+
+	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}

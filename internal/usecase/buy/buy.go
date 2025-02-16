@@ -3,23 +3,30 @@ package buy
 import (
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
+	e "avito-shop/pkg/errors"
 	"context"
 	"fmt"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
 	repoBalance   BalanceRepo
 	repoInventory InventoryRepo
+	trManager     *manager.Manager
 }
 
-func New(rB *repository.BalanceRepo, rI *repository.InventoryRepo) *UseCase {
+func New(rB *repository.BalanceRepo,
+	rI *repository.InventoryRepo,
+	trManager *manager.Manager,
+) *UseCase {
 	return &UseCase{
 		repoBalance:   rB,
 		repoInventory: rI,
+		trManager:     trManager,
 	}
 }
 
-//go:generate mockgen -source=buy.go -destination=./mocks_test.go -package=usecase_test
+//go:generate mockery --name=Buy
 
 type (
 	Buy interface {
@@ -47,37 +54,45 @@ func (uc *UseCase) BuyItem(ctx context.Context, username, item string) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	balance, err := uc.repoBalance.GetUserBalance(ctx, username)
-	if err != nil {
-		return err
-	}
+	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
 
-	if balance < price {
-		return fmt.Errorf("%s: %w", op, "NO BALANCE")
-	}
+		balance, err := uc.repoBalance.GetUserBalance(ctx, username)
+		if err != nil {
+			return err
+		}
 
-	if err = uc.repoBalance.DecreaseBalance(ctx, username, price); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
+		if balance < price {
+			return fmt.Errorf("%s: %w", op, e.ErrInvalidCredentials)
+		}
 
-	exists, err := uc.repoInventory.ExistsInventoryItem(ctx, username, item)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
+		if err = uc.repoBalance.DecreaseBalance(ctx, username, price); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
 
-	if !exists {
-		err = uc.repoInventory.AddInventory(ctx, entity.Inventory{
-			Username: username,
-			Item:     item,
-			Quantity: 0})
+		exists, err := uc.repoInventory.ExistsInventoryItem(ctx, username, item)
 		if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
-	}
 
-	if err = uc.repoInventory.IncrementInventoryItemQuantity(ctx, username, item); err != nil {
+		if !exists {
+			err = uc.repoInventory.AddInventory(ctx, entity.Inventory{
+				Username: username,
+				Item:     item,
+				Quantity: 0})
+			if err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
+		}
+
+		if err = uc.repoInventory.IncrementInventoryItemQuantity(ctx, username, item); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-
 	return nil
 }
