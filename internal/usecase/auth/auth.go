@@ -1,14 +1,16 @@
 package auth
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
 	e "avito-shop/pkg/errors"
 	"avito-shop/pkg/jwt"
-	"context"
-	"errors"
-	"fmt"
-	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 const (
@@ -50,8 +52,11 @@ func (uc *UseCase) Login(ctx context.Context, in entity.User) (string, error) {
 	const op = "usecase.auth.Login"
 
 	var token string
+
 	var err error
+
 	var user *entity.User
+
 	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
 		user, err = uc.repoUser.Get(ctx, in.Username)
 		if errors.Is(err, e.ErrNotFound) {
@@ -59,16 +64,18 @@ func (uc *UseCase) Login(ctx context.Context, in entity.User) (string, error) {
 			if err != nil {
 				return fmt.Errorf("%s: failed to register user: %w", op, err)
 			}
+
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
+
 		return nil
 	})
-
 	if err != nil {
 		return "", fmt.Errorf("%s: failed to login: %w", op, err)
 	}
+
 	if token != "" {
 		return token, nil
 	}
@@ -91,6 +98,7 @@ func (uc *UseCase) register(ctx context.Context, in entity.User) (string, error)
 	if err := uc.repoUser.Add(ctx, in); err != nil {
 		return "", fmt.Errorf("%s:%w", op, err)
 	}
+
 	if err := uc.repoBalance.InitBalance(ctx, in.Username, newUserBalance); err != nil {
 		return "", fmt.Errorf("%s:%w", op, err)
 	}

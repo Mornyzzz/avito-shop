@@ -1,9 +1,10 @@
 package main
 
 import (
+	"log"
+
 	"avito-shop/config"
 	"avito-shop/internal/app"
-	"log"
 )
 
 func main() {

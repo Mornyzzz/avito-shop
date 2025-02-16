@@ -1,10 +1,12 @@
 package info
 
 import (
+	"context"
+
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
-	"context"
-	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
@@ -51,7 +53,7 @@ type (
 )
 
 func (uc *UseCase) GetInfo(ctx context.Context, username string) (*entity.Info, error) {
-	const op = "usecase.info.GetInfo"
+	//const op = "usecase.info.GetInfo"
 
 	var (
 		balance      int
@@ -62,23 +64,26 @@ func (uc *UseCase) GetInfo(ctx context.Context, username string) (*entity.Info, 
 	)
 
 	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
-
 		balance, err = uc.repoBalance.GetUserBalance(ctx, username)
 		if err != nil {
 			return err
 		}
+
 		inventory, err = uc.repoInventory.GetInventory(ctx, username)
 		if err != nil {
 			return err
 		}
+
 		sentTxns, err = uc.repoTransaction.GetSentTransactions(ctx, username)
 		if err != nil {
 			return err
 		}
+
 		receivedTxns, err = uc.repoTransaction.GetReceivedTransactions(ctx, username)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {

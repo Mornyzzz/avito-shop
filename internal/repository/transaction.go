@@ -1,12 +1,14 @@
 package repository
 
 import (
-	"avito-shop/internal/entity"
-	"avito-shop/pkg/postgres"
 	"context"
 	"fmt"
+
 	sq "github.com/Masterminds/squirrel"
 	trmpgx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
+
+	"avito-shop/internal/entity"
+	"avito-shop/pkg/postgres"
 )
 
 type TransactionRepo struct {
@@ -38,10 +40,12 @@ func (r *TransactionRepo) AddTransaction(ctx context.Context, txn entity.CoinTra
 	}
 
 	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+
 	_, err = conn.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
+
 	return nil
 }
 
@@ -58,10 +62,12 @@ func (r *TransactionRepo) GetReceivedTransactions(ctx context.Context, username 
 	}
 
 	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+
 	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
+
 	defer rows.Close()
 
 	var receivedTxns []entity.ReceivedTransaction
@@ -71,6 +77,7 @@ func (r *TransactionRepo) GetReceivedTransactions(ctx context.Context, username 
 		if err = rows.Scan(&item.FromUser, &item.Amount); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+
 		receivedTxns = append(receivedTxns, item)
 	}
 
@@ -94,10 +101,12 @@ func (r *TransactionRepo) GetSentTransactions(ctx context.Context, username stri
 	}
 
 	conn := trmpgx.DefaultCtxGetter.DefaultTrOrDB(ctx, r.Pool)
+
 	rows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to execute query: %w", op, err)
 	}
+
 	defer rows.Close()
 
 	var sentTxns []entity.SentTransaction
@@ -107,6 +116,7 @@ func (r *TransactionRepo) GetSentTransactions(ctx context.Context, username stri
 		if err = rows.Scan(&item.ToUser, &item.Amount); err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+
 		sentTxns = append(sentTxns, item)
 	}
 

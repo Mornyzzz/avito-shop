@@ -1,17 +1,19 @@
 package handlers
 
 import (
-	"avito-shop/internal/controller/worker"
-	worker_mocks "avito-shop/internal/controller/worker/mocks"
-	buy_mocks "avito-shop/internal/usecase/buy/mocks"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/exp/slog"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+
+	"avito-shop/internal/controller/worker"
+	worker_mocks "avito-shop/internal/controller/worker/mocks"
+	buy_mocks "avito-shop/internal/usecase/buy/mocks"
 )
 
 func TestBuyRoute_Buy_Success(t *testing.T) {
@@ -27,10 +29,11 @@ func TestBuyRoute_Buy_Success(t *testing.T) {
 	mockBuyUC.On("BuyItem", mock.Anything, "testuser", "testitem").Return(nil)
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", http.NoBody)
 	c.Params = gin.Params{gin.Param{Key: "item", Value: "testitem"}}
 	c.Set("username", "testuser")
 
@@ -55,10 +58,11 @@ func TestBuyRoute_Buy_InvalidRequest(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/buy/", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/buy/", http.NoBody)
 	c.Set("username", "testuser") // Устанавливаем username в контексте
 
 	buyRoute := &BuyRoute{
@@ -79,10 +83,11 @@ func TestBuyRoute_Buy_Unauthorized(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", http.NoBody)
 	c.Params = gin.Params{gin.Param{Key: "item", Value: "testitem"}}
 
 	buyRoute := &BuyRoute{
@@ -110,10 +115,11 @@ func TestBuyRoute_Buy_InternalError(t *testing.T) {
 	mockBuyUC.On("BuyItem", mock.Anything, "testuser", "testitem").Return(errors.New("internal error"))
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/buy/testitem", http.NoBody)
 	c.Params = gin.Params{gin.Param{Key: "item", Value: "testitem"}}
 	c.Set("username", "testuser")
 

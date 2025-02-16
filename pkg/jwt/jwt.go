@@ -1,17 +1,16 @@
 package jwt
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
-var (
-	jwtKey = []byte("my-avito-secret-key")
-)
+var jwtKey = []byte("my-avito-secret-key")
 
 type Claims struct {
 	Username string `json:"username"`
@@ -32,6 +31,7 @@ func GenerateToken(username string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
 		return "", err
@@ -45,12 +45,14 @@ func AuthMW() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+
 			return
 		}
 
@@ -60,6 +62,7 @@ func AuthMW() gin.HandlerFunc {
 		if err != nil || !token.Valid {
 			log.Printf("Invalid token: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+
 			return
 		}
 
@@ -67,6 +70,7 @@ func AuthMW() gin.HandlerFunc {
 			c.Set("username", claims.Username)
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+
 			return
 		}
 

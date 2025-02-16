@@ -1,18 +1,20 @@
 package handlers
 
 import (
-	"avito-shop/internal/controller/worker"
-	workermocks "avito-shop/internal/controller/worker/mocks"
-	sendmocks "avito-shop/internal/usecase/send/mocks"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"golang.org/x/exp/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/exp/slog"
+
+	"avito-shop/internal/controller/worker"
+	workermocks "avito-shop/internal/controller/worker/mocks"
+	sendmocks "avito-shop/internal/usecase/send/mocks"
 )
 
 func TestSendRoute_Send_Success(t *testing.T) {
@@ -28,6 +30,7 @@ func TestSendRoute_Send_Success(t *testing.T) {
 	mockSendUC.On("SendCoin", mock.Anything, "senderUser", "receiverUser", 100).Return(nil)
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -57,6 +60,7 @@ func TestSendRoute_Send_Unauthorized(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -82,6 +86,7 @@ func TestSendRoute_Send_InvalidRequest(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -115,6 +120,7 @@ func TestSendRoute_Send_InternalError(t *testing.T) {
 	mockSendUC.On("SendCoin", mock.Anything, "senderUser", "receiverUser", 100).Return(errors.New("internal error"))
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 

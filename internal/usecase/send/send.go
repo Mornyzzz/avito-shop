@@ -1,12 +1,14 @@
 package send
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
 	"avito-shop/pkg/errors"
-	"context"
-	"fmt"
-	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
@@ -45,7 +47,7 @@ func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount
 	const op = "usecase.SendCoin"
 
 	if amount <= 0 {
-		return fmt.Errorf("%s: %s", op, errors.ErrInvalidCredentials)
+		return fmt.Errorf("%s: %w", op, errors.ErrInvalidCredentials)
 	}
 
 	err := uc.trManager.Do(ctx, func(ctx context.Context) error {
@@ -80,10 +82,12 @@ func (uc *UseCase) SendCoin(ctx context.Context, fromUser, toUser string, amount
 		if err = uc.repoTransaction.AddTransaction(ctx, txn); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
 		}
+
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	return nil
 }

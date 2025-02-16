@@ -2,6 +2,13 @@
 package controller
 
 import (
+	trmsqlx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+	// Swagger docs.
+	_ "github.com/evrone/go-clean-template/docs"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
+
 	h "avito-shop/internal/controller/handlers"
 	"avito-shop/internal/controller/worker"
 	repo "avito-shop/internal/repository"
@@ -10,12 +17,6 @@ import (
 	"avito-shop/internal/usecase/info"
 	"avito-shop/internal/usecase/send"
 	"avito-shop/pkg/postgres"
-	trmsqlx "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
-	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/exp/slog"
-	// Swagger docs.
-	_ "github.com/evrone/go-clean-template/docs"
 )
 
 func NewRouter(handler *gin.Engine,
@@ -61,5 +62,4 @@ func NewRouter(handler *gin.Engine,
 		h.NewInfoRoute(v1, infoUseCase, wp, log)
 		h.NewSendRoute(v1, sendUseCase, wp, log)
 	}
-
 }

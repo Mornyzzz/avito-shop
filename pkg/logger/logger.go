@@ -1,9 +1,11 @@
 package logger
 
 import (
-	"avito-shop/pkg/logger/handlers/slogpretty"
-	"golang.org/x/exp/slog"
 	"os"
+
+	"golang.org/x/exp/slog"
+
+	"avito-shop/pkg/logger/handlers/slogpretty"
 )
 
 func SetupLogger(env string) *slog.Logger {

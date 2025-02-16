@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
+
 	"avito-shop/internal/controller/worker"
 	"avito-shop/internal/entity"
 	"avito-shop/internal/usecase/auth"
 	e "avito-shop/pkg/errors"
-	"errors"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/exp/slog"
-	"net/http"
 )
 
 type AuthRoute struct {
@@ -40,6 +42,7 @@ func (r *AuthRoute) Auth(c *gin.Context) {
 
 		if err := c.ShouldBindJSON(&req); err != nil {
 			errorChan <- err
+
 			return
 		}
 
@@ -47,9 +50,9 @@ func (r *AuthRoute) Auth(c *gin.Context) {
 			Username: req.Username,
 			Password: req.Password,
 		})
-
 		if err != nil {
 			errorChan <- err
+
 			return
 		}
 
@@ -61,6 +64,7 @@ func (r *AuthRoute) Auth(c *gin.Context) {
 		c.JSON(http.StatusOK, authResponse)
 	case err := <-errorChan:
 		r.log.Error("Authentication failed", slog.String("error", err.Error()))
+
 		switch {
 		case errors.Is(err, e.ErrInvalidCredentials), errors.Is(err, e.ErrNotFound):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid credentials"})

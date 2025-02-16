@@ -1,14 +1,16 @@
 package handlers
 
 import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
+
 	"avito-shop/internal/controller/worker"
 	"avito-shop/internal/usecase/send"
 	e "avito-shop/pkg/errors"
 	mw "avito-shop/pkg/jwt"
-	"errors"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/exp/slog"
-	"net/http"
 )
 
 type SendRoute struct {
@@ -35,6 +37,7 @@ func (r *SendRoute) Send(c *gin.Context) {
 	if !exists {
 		r.log.Error("Username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
 		return
 	}
 
@@ -42,6 +45,7 @@ func (r *SendRoute) Send(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		r.log.Error("Failed to parse request", slog.String("error", err.Error()))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+
 		return
 	}
 
@@ -49,6 +53,7 @@ func (r *SendRoute) Send(c *gin.Context) {
 		err := r.sendUC.SendCoin(c.Request.Context(), username.(string), req.ToUser, req.Amount)
 		if err != nil {
 			errorChan <- err
+
 			return
 		}
 
@@ -60,6 +65,7 @@ func (r *SendRoute) Send(c *gin.Context) {
 		c.JSON(http.StatusOK, result)
 	case err := <-errorChan:
 		r.log.Error("Failed to send coins", slog.String("error", err.Error()))
+
 		switch {
 		case errors.Is(err, e.ErrInvalidCredentials), errors.Is(err, e.ErrNotFound):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid credentials"})

@@ -1,12 +1,14 @@
 package buy
 
 import (
+	"context"
+	"fmt"
+
+	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+
 	"avito-shop/internal/entity"
 	"avito-shop/internal/repository"
 	e "avito-shop/pkg/errors"
-	"context"
-	"fmt"
-	"github.com/avito-tech/go-transaction-manager/trm/v2/manager"
 )
 
 type UseCase struct {
@@ -41,8 +43,8 @@ type (
 	InventoryRepo interface {
 		GetItemPrice(ctx context.Context, name string) (int, error)
 		AddInventory(ctx context.Context, inventory entity.Inventory) error
-		ExistsInventoryItem(ctx context.Context, username string, item string) (bool, error)
-		IncrementInventoryItemQuantity(ctx context.Context, username string, item string) error
+		ExistsInventoryItem(ctx context.Context, username, item string) (bool, error)
+		IncrementInventoryItemQuantity(ctx context.Context, username, item string) error
 	}
 )
 
@@ -55,7 +57,6 @@ func (uc *UseCase) BuyItem(ctx context.Context, username, item string) error {
 	}
 
 	err = uc.trManager.Do(ctx, func(ctx context.Context) error {
-
 		balance, err := uc.repoBalance.GetUserBalance(ctx, username)
 		if err != nil {
 			return err
@@ -78,7 +79,8 @@ func (uc *UseCase) BuyItem(ctx context.Context, username, item string) error {
 			err = uc.repoInventory.AddInventory(ctx, entity.Inventory{
 				Username: username,
 				Item:     item,
-				Quantity: 0})
+				Quantity: 0,
+			})
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
@@ -90,9 +92,9 @@ func (uc *UseCase) BuyItem(ctx context.Context, username, item string) error {
 
 		return nil
 	})
-
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+
 	return nil
 }

@@ -1,19 +1,21 @@
 package handlers
 
 import (
-	"avito-shop/internal/controller/worker"
-	worker_mocks "avito-shop/internal/controller/worker/mocks"
-	"avito-shop/internal/entity"
-	auth_mocks "avito-shop/internal/usecase/auth/mocks"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"golang.org/x/exp/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"golang.org/x/exp/slog"
+
+	"avito-shop/internal/controller/worker"
+	worker_mocks "avito-shop/internal/controller/worker/mocks"
+	"avito-shop/internal/entity"
+	auth_mocks "avito-shop/internal/usecase/auth/mocks"
 )
 
 func TestAuthRoute_Auth(t *testing.T) {
@@ -22,6 +24,7 @@ func TestAuthRoute_Auth(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -51,6 +54,7 @@ func TestAuthRoute_Auth_InvalidCredentials(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 

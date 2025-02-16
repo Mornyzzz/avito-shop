@@ -31,6 +31,7 @@ type (
 
 func NewConfig() (*Config, error) {
 	const op = "config.NewConfig"
+
 	cfg := &Config{}
 
 	err := cleanenv.ReadConfig("./config/config.yml", cfg)

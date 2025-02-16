@@ -17,12 +17,13 @@ type Pool struct {
 	wg        sync.WaitGroup
 }
 
-func NewWorkerPool(numWorkers int, numTask int) *Pool {
+func NewWorkerPool(numWorkers, numTask int) *Pool {
 	pool := &Pool{
 		taskQueue: make(chan Task, numTask),
 	}
 
 	pool.wg.Add(numWorkers)
+
 	for i := 0; i < numWorkers; i++ {
 		go pool.worker()
 	}
@@ -32,6 +33,7 @@ func NewWorkerPool(numWorkers int, numTask int) *Pool {
 
 func (p *Pool) worker() {
 	defer p.wg.Done()
+
 	for task := range p.taskQueue {
 		task()
 	}

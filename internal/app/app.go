@@ -1,6 +1,17 @@
 package app
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	_ "sync"
+	"syscall"
+
+	_ "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
+	_ "github.com/avito-tech/go-transaction-manager/trm/v2/manager"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
+
 	"avito-shop/config"
 	"avito-shop/internal/controller"
 	"avito-shop/internal/controller/worker"
@@ -10,16 +21,6 @@ import (
 	_ "avito-shop/pkg/logger/handlers/slogpretty"
 	"avito-shop/pkg/logger/sl"
 	"avito-shop/pkg/postgres"
-	"fmt"
-	_ "github.com/avito-tech/go-transaction-manager/drivers/pgxv4/v2"
-	_ "github.com/avito-tech/go-transaction-manager/trm/v2/manager"
-	_ "sync"
-
-	"github.com/gin-gonic/gin"
-	"golang.org/x/exp/slog"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 func Run(cfg *config.Config) {
 	const op = "app.Run"
 
-	//logger
+	// logger
 	log := l.SetupLogger(cfg.Env)
 
 	log.Info(
@@ -60,7 +61,7 @@ func Run(cfg *config.Config) {
 		workerPool,
 	)
 
-	//run server
+	// run server
 	httpServer := httpserver.New(handler, httpserver.Port(cfg.HTTP.Port))
 
 	// Waiting signal
@@ -76,6 +77,7 @@ func Run(cfg *config.Config) {
 
 	// Shutdown
 	workerPool.Shutdown()
+
 	err = httpServer.Shutdown()
 	if err != nil {
 		log.Error("failed to stop server", fmt.Errorf("%s: %w", op, err))

@@ -1,18 +1,20 @@
 package handlers
 
 import (
-	"avito-shop/internal/controller/worker"
-	workermocks "avito-shop/internal/controller/worker/mocks"
-	"avito-shop/internal/entity"
-	infomocks "avito-shop/internal/usecase/info/mocks"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/exp/slog"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+
+	"avito-shop/internal/controller/worker"
+	workermocks "avito-shop/internal/controller/worker/mocks"
+	"avito-shop/internal/entity"
+	infomocks "avito-shop/internal/usecase/info/mocks"
 )
 
 func TestInfoRoute_Info_Success(t *testing.T) {
@@ -43,10 +45,11 @@ func TestInfoRoute_Info_Success(t *testing.T) {
 	mockInfoUC.On("GetInfo", mock.Anything, "testuser").Return(expectedInfo, nil)
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/info", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/info", http.NoBody)
 	c.Set("username", "testuser")
 
 	infoRoute := &InfoRoute{
@@ -85,10 +88,11 @@ func TestInfoRoute_Info_Unauthorized(t *testing.T) {
 	log := slog.Default()
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/info", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/info", http.NoBody)
 
 	infoRoute := &InfoRoute{
 		infoUC: mockInfoUC,
@@ -115,10 +119,11 @@ func TestInfoRoute_Info_InternalError(t *testing.T) {
 	mockInfoUC.On("GetInfo", mock.Anything, "testuser").Return(nil, errors.New("internal error"))
 
 	gin.SetMode(gin.TestMode)
+
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	c.Request = httptest.NewRequest(http.MethodGet, "/info", nil)
+	c.Request = httptest.NewRequest(http.MethodGet, "/info", http.NoBody)
 	c.Set("username", "testuser")
 
 	infoRoute := &InfoRoute{

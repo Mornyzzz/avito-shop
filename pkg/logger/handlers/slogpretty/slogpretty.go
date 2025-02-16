@@ -59,6 +59,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 	}
 
 	var b []byte
+
 	var err error
 
 	if len(fields) > 0 {

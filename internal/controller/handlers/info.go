@@ -1,15 +1,17 @@
 package handlers
 
 import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/slog"
+
 	"avito-shop/internal/controller/worker"
 	"avito-shop/internal/entity"
 	"avito-shop/internal/usecase/info"
 	e "avito-shop/pkg/errors"
 	mw "avito-shop/pkg/jwt"
-	"errors"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/exp/slog"
-	"net/http"
 )
 
 type InfoRoute struct {
@@ -31,6 +33,7 @@ func (r *InfoRoute) Info(c *gin.Context) {
 	if !exists {
 		r.log.Error("Username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+
 		return
 	}
 
@@ -49,6 +52,7 @@ func (r *InfoRoute) Info(c *gin.Context) {
 		c.JSON(http.StatusOK, result)
 	case err := <-errorChan:
 		r.log.Error("Failed to get info", slog.String("error", err.Error()))
+
 		switch {
 		case errors.Is(err, e.ErrInvalidCredentials), errors.Is(err, e.ErrNotFound):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid credentials"})
